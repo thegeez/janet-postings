@@ -1,0 +1,46 @@
+<section id="inline-main">
+  {{
+  (when-let [errors (get args :errors)]
+  (print `<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 my-4" role="alert">`)
+    # errors is k,v but only show value
+    (each value errors
+      (print `<span class="block">Errors: ` (escape value) `</span>`)
+    )
+  (print `</div>`)
+  )
+  }}
+  <form id="post-form" class="" method="POST" action="{{ (getx args :post.links/action) }}">
+    <input type="hidden"  name="csrf-token" value="{{ (getx args :csrf-token) }}"/>
+    <div class="flex flex-wrap -mx-3 mb-6">
+      <div class="w-full px-3">
+        {% (def error (get-in args [:errors :title])) %}
+        <label class="block mb-2 {{ (when error `text-red-500`) }}" for="grid-title">
+          Title
+        </label>
+        <input class="block w-full bg-gray-100 border py-3 px-4 mb-3 focus:bg-white {{ (when error `border-red-500`) }}" id="grid-title" type="text" name="title" value="{{ (get args :title) }}">
+        {- (when error (string `<p class="text-red-500">` (escape error) `</p>`)) -}
+      </div>
+    </div>
+    <div class="flex flex-wrap -mx-3 mb-6">
+      <div class="w-full px-3">
+        {% (def error (get-in args [:errors :text])) %}
+        <label class="block mb-2 {{ (when error `text-red-500`) }}" for="grid-text">
+          Text
+        </label>
+        <textarea class="block w-full bg-gray-100 border py-3 px-4 mb-3 focus:bg-white {{ (when error `border-red-500`) }}" name="text" id="grid-text">{{ (get args :text) }}</textarea>
+        {- (when error (string `<p class="text-red-500">` (escape error) `</p>`)) -}
+        <p class="text-gray-600">Make it at least 10 chars long</p>
+      </div>
+    </div>
+    <div class="flex flex-wrap -mx-3 mb-6">
+      <div class="w-full px-3 items-center justify-between">
+        <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 mr-4 focus:shadow-outline" type="submit">
+          Submit
+        </button>
+        <a class="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800" href="{{ (getx args :post.links/back) }}">
+          Cancel
+        </a>
+      </div>
+    </div>
+  </form>
+</section>

@@ -1,0 +1,20 @@
+{@extends templates/base.html @}
+
+<nav class="flex items-center justify-between flex-wrap mb-4">
+  <div classes="w-full block flex-grow lg:flex lg:items-center lg:w-auto">
+    <a href="{{ (getx args :post.links/index) }}" class="inline-block leading-relaxed px-4 py-2 border-solid border-2 border-gray-300 hover:bg-gray-300">Posts index</a>
+
+    <a href="{{ (getx args :post.links/new) }}" class="inline-block leading-relaxed px-4 py-2 border-solid border-2 border-gray-300 hover:bg-gray-300 ml-4">New post</a>
+
+  </div>
+</nav>
+
+<div class="max-w-sm w-full max-w-full mb-4">
+  <div class="border-solid border-2 border-gray-300 bg-white p-4 flex flex-col justify-between leading-normal">
+    <div class="mb-2">
+      <h1 class="font-bold text-xl mb-2">{{ (getx args :username) }}</h1>
+
+      <p class="text-base">Account created <span title="{{(getx args :created-at-date)}}">{{ (getx args :created-at-ago) }}</span></p>
+    </div>
+  </div>
+</div>

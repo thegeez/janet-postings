@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Postings</title>
+
+    {- (if (os/getenv "JANET_DEV_ENV")
+    `<link href="/public/css/tailwind.min.css" rel="stylesheet">`
+    
+    `<link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/1.2.0/tailwind.min.css" rel="stylesheet">`
+    )-}
+    <!--<link href="https://geniusoffswitchlabs-app1.s3.eu-central-1.amazonaws.com/tailwind.min.css" rel="stylesheet">-->
+    <style>
+      a { text-decoration: underline }
+      ul {padding-left: 30px}
+    </style>
+  </head>
+  <body class="min-w-800 bg-gray-500">
+    <div class="container mx-auto bg-white">
+      <header>
+        <div class="border-solid border-b-4 border-gray-500">
+
+          {@include templates/header_bar.html @}
+
+        </div>
+      </header>
+      <div class="p-5">
+        {% (when-let [flash-info (get-in args [:flash :info])]
+        (print `<div class="bg-blue-100 border border border-blue-500 text-blue-700 px-4 py-3 mb-4" role="alert">
+          <p class="text-sm">` (escape flash-info) `</p>
+        </div>`)
+
+        )%}
+
+        {@block @}
+
+        <hr class="mt-4">
+      </div>
+
+    </div>
+  </body>
+</html>

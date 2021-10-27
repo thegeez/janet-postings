@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Postings</title>
+    {- (if (os/getenv "JANET_DEV_ENV")
+    `<link href="/public/css/tailwind.min.css" rel="stylesheet">`
+    
+    `<link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/1.2.0/tailwind.min.css" rel="stylesheet">`
+    )-}
+    <style>
+      a { text-decoration: underline }
+    </style>
+  </head>
+  <body class="bg-gray-500">
+
+    {% (when-let [flash-info (get-in args [:flash :info])]
+    (print `<div class="bg-blue-100 border border border-blue-500 text-blue-700 px-4 py-3 mb-4" role="alert">
+      <p class="text-sm">` (escape flash-info) `</p>
+    </div>`)
+
+    )%}
+
+      <div class="container mx-auto h-full flex justify-center items-center">
+
+        <div class="w-1/3">
+          <h1 class="m-6 text-center font-bold">Login to Postings</h1>
+          {@include templates/_guest_login.html @}
+          <div class="m-2 text-center">
+            or with your account
+          </div>
+          
+          <div class="border-teal p-8 border-t-12 bg-white mb-6">
+            {{
+            (when-let [errors (get args :errors)]
+            (print `<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 my-4" role="alert">`)
+            # errors is k,v but only show value
+            (each value errors
+            (print `<span class="block">Errors: ` (escape value) `</span>`)
+            )
+            (print `</div>`)
+            )
+            }}
+
+            <form  method="POST" action="{{ (getx args :login.links/action) }}">
+              <input type="hidden" name="csrf-token" value="{{ (getx args :csrf-token) }}"/>
+              
+              <div class="mb-4">
+                {% (def error (get-in args [:errors :username])) %}
+                <label class="font-bold block mb-2 {{ (when error `text-red-500`) }}" for="grid-username">
+                  Username
+                </label>
+                <input class="block w-full bg-white border border-grey-light hover:border-grey px-2 py-2 mb-4 {{ (when error `border-red-500`) }}" id="grid-username" type="text" name="username" value="{{ (get args :username) }}">
+                {- (when error (string `<p class="text-red-500">` (escape error) `</p>`)) -}
+
+              </div>
+
+              <div class="mb-4">
+                {% (def error (get-in args [:errors :password])) %}
+                <label class="font-bold block mb-2 {{ (when error `text-red-500`) }}" for="grid-password">
+                  Password
+                </label>
+                <input class="block w-full bg-white border border-grey-light hover:border-grey px-2 py-2 mb-4 {{ (when error `border-red-500`) }}" id="grid-password" type="password" name="password">
+                {- (when error (string `<p class="text-red-500">` (escape error) `</p>`)) -}
+
+            </div>
+
+              <div class="flex items-center justify-between mt-8">
+                <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 mr-4 focus:shadow-outline" type="submit">
+                  Login
+                </button>
+                
+                <a class="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800" href="{{ (getx args :login.links/cancel) }}">
+                  Cancel
+                </a>
+                
+              </div>
+            </form>
+          </div>
+          <div class="text-center">
+            <p>Not yet signed up?</p>
+            <p>Sign up by creating an account: <a class="font-bold" href="{{ (getx args :auth.links/signup) }}">Sign up</a>
+          </div>
+        </div>
+      </div>
+
+  </body>
+</html>
