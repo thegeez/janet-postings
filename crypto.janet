@@ -130,7 +130,7 @@
 
 (defn hmac-sha256 [key data]
    (let [b @""]
-     (encdecsignhash/hmac-sha256-into-buffer key data b)
+     (encdecsignhash/hmac-sha256-into-buffer key (length key) data (length data) b)
      (string b)))
 
 (defn aes-cbc-encrypt [key data]
