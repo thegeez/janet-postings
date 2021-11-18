@@ -1,4 +1,5 @@
-Janet web app on AWS Lambda
+## Janet web app on AWS Lambda
+See the blog post: https://thegeez.net/2021/10/28/janet_web_app_aws_lambda.html
 
 ## About
 
