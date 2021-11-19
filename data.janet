@@ -1,4 +1,4 @@
-(import ./aws_dynamo/ddb :as ddb)
+(import ./lib/aws_dynamo :as ddb)
 (import ./moment)
 
 (def TABLE_NAME "janet_postings")

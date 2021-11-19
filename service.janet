@@ -1,4 +1,4 @@
-(import http)
+(import /lib/http)
 (import json)
 (import ./posts)
 (import ./profile)
@@ -186,6 +186,7 @@
                                                                0 # start from
                                                                2 # limit (do not split == within cookie-data-string)
                                                                )
+
                 cookie-string (crypto/unseal cookie-key cookie-data-string)]
             (put cookies cookie-name cookie-string)))
         (put request :cookies cookies))
@@ -383,7 +384,7 @@
 (defn service [request]
   (def [request response] (before-handlers request))
   (if response
-    response             # shortcut if before-handlers made a response
+    response       # shortcut if before-handlers made a response
 
     (let [method (get request :method)
           uri (get request :uri)
@@ -464,8 +465,8 @@
                      (file-handler request "public")
 
                      :else
-                     {:status 404}
-                     )]
+                      {:status 404}
+                      )]
       (after-handlers request response))))
 
 
