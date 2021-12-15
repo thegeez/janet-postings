@@ -1,7 +1,7 @@
-(import ./temple/temple :as temple)
 (import ./data)
+(import ./selmer :as selmer)
 
-(def profile-show-template (temple/make-template-fn "templates/profile.html"))
+(def profile-show-template (selmer/make-template-fn "template/profile.html"))
 
 (defn profile-show [request]
   (let [userslug (string/slice (get request :uri) (length "/profile/"))

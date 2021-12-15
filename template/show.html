@@ -1,0 +1,83 @@
+{% extends "template/base.html" %}
+{% block content %}
+<nav class="flex items-center justify-between flex-wrap mb-4">
+  <div classes="w-full block flex-grow lg:flex lg:items-center lg:w-auto">
+    <a href="{{ (getx args :post.links/index) }}" class="inline-block leading-relaxed px-4 py-2 border-solid border-2 border-gray-300 hover:bg-gray-300">Posts index</a>
+
+    <a href="{{ (getx args :post.links/new) }}" class="inline-block leading-relaxed px-4 py-2 border-solid border-2 border-gray-300 hover:bg-gray-300 ml-4">New post</a>
+
+  </div>
+</nav>
+
+<div class="max-w-sm w-full max-w-full mb-4">
+  <div class="border-solid border-2 border-gray-300 bg-white p-4 flex flex-col justify-between leading-normal">
+    <div class="mb-2">
+      <h1 class="font-bold text-xl mb-2">{{ (getx args :title) }}</h1>
+
+      <p class="text-base">{{ (getx args :text) }}</p>
+    </div>
+    <div class="flex flex-col">
+      <div class="block">Posted by <a href="{{ (getx args :post.links/user-profile) }}">{{ (getx args :username) }}</a></div>
+      <div class="block text-gray-700">Created <a href="{{ (getx args :post.links/show) }}" title="{{ (getx args :cdate) }}">{{ (getx args :created_at_ago) }}</a>, {{ (getx args :comment-count 0) }} comments</div>
+    </div>
+
+    {% if (def reply-link (get args :post.links/reply)) %}
+    <div class="block"><a href="{{ reply-link }}" wa-inline="reply">Reply with comment</a></div>
+    {% else %}
+    <div class="block"><a href="{{ (getx args :auth.links/login) }}">Login</a> or <a href="{{ (getx args :auth.links/signup) }}">signup</a> to comment</div>
+    {% endif %}
+
+  </div>
+  {-
+  (var prev-path @[])
+  (var at-path @[])
+  -}
+  {% for comment in (getx args :comments) %}
+{-
+  (set prev-path at-path)
+  (set at-path (getx comment :nesting-path))
+  -}
+  {% if (zero? for_index)  %}
+  <div style="padding-left: 0px; padding-top: 15px;"></div>
+  {% endif %}
+  
+  {% if (< (length prev-path) (length at-path)) %}
+           <ul>
+  {% endif %}
+  {% if (and (= (length prev-path) (length at-path))
+             (not (deep= prev-path at-path))) %}
+  </ul><ul>
+  {% endif %}
+  {% if (< (length at-path) (length prev-path)) %}
+           {% for i in (seq [i :range [0 (- (length prev-path) (length at-path))]] i) %}
+           </ul>
+           {% endfor %}
+  {% endif %}
+
+  <li><div class="max-w-sm w-full max-w-full mb-4">
+      <div class="border-solid border-2 border-gray-300 bg-white p-4 flex flex-col justify-between leading-normal">
+        <a name="{{ (getx comment :comment-order-id) }}"></a>
+    <div class="mb-2">
+      <p class="text-base">{{  (getx comment :text) }}</p>
+    </div>
+    <div class="flex flex-col">
+      <div>Posted by <a href="{{ (getx comment :comment.links/user-profile) }}">{{ (getx comment :username) }}</a></div>
+
+      <div class="text-gray-700">Created <a href="{{ (getx comment :comment.links/show) }}" title="{{ (getx comment :cdate) }}">{{ (getx comment :created_at_ago) }}</a></div>
+      
+      {% if (def reply-link (get comment :comment.links/reply)) %}
+      <div><a href="{{ reply-link }}" wa-inline="reply">Reply</a></div>
+      {% else %}
+      <div><a href="{{ (getx args :auth.links/login) }}">Login</a> or <a href="{{ (getx args :auth.links/signup) }}">signup</a> to reply</div>
+      {% endif %}
+  </div></div></li>
+
+  {% endfor %}
+
+</div>
+
+<script src="/public/inline.js"></script>
+<script type="text/javascript">
+  window.onload=function(e){runEnhance();};
+</script>
+{% endblock %}

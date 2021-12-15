@@ -1,5 +1,5 @@
-{@extends templates/base.html @}
-
+{% extends "template/base.html" %}
+{% block content %}
 <nav class="flex items-center justify-between flex-wrap mb-4">
   <div classes="w-full block flex-grow lg:flex lg:items-center lg:w-auto">
     <a class="inline-block leading-relaxed px-4 py-2 border-solid border-2 border-gray-300 hover:bg-gray-300" href="{{ (getx args :post.links/index) }}">Posts index</a>
@@ -7,4 +7,5 @@
 </nav>
 
 <h1 class="text-xl font-bold">New post</h1>
-{@include templates/_post_form.html @}
+{% include "template/_post_form.html" %}
+{% endblock %}

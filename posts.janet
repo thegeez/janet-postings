@@ -1,11 +1,12 @@
-(import ./temple/temple :as temple)
 (import ./pushid :as pushid)
 (import ./data)
+(import ./selmer :as selmer)
 
-(def posts-index-template (temple/make-template-fn "templates/index.html"))
-(def posts-new-template (temple/make-template-fn "templates/new.html"))
-(def posts-show-template (temple/make-template-fn "templates/show.html"))
-(def posts-reply-template (temple/make-template-fn "templates/reply.html"))
+(def posts-index-template (selmer/make-template-fn "template/index.html"))
+
+(def posts-new-template (selmer/make-template-fn "template/new.html"))
+(def posts-show-template (selmer/make-template-fn "template/show.html"))
+(def posts-reply-template (selmer/make-template-fn "template/reply.html"))
 
 (defn posts-index [request]
   (let [## before/after is "20211023T200847Z_0MmilH44Uu3YgNPVII_f"
@@ -13,7 +14,6 @@
         after (get-in request [:query-params "after"])
         limit (get-in request [:query-params "limit"] 3)
         posts (data/get-posts before after limit)
-
         posts (seq [post :in posts]
                    (merge-into @{:post.links/show (string "/posts/" (get post :slug))
                                  :post.links/user-profile (string "/profile/" (get post :userslug))}

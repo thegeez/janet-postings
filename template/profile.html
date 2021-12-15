@@ -1,5 +1,5 @@
-{@extends templates/base.html @}
-
+{% extends "template/base.html" %}
+{% block content %}
 <nav class="flex items-center justify-between flex-wrap mb-4">
   <div classes="w-full block flex-grow lg:flex lg:items-center lg:w-auto">
     <a href="{{ (getx args :post.links/index) }}" class="inline-block leading-relaxed px-4 py-2 border-solid border-2 border-gray-300 hover:bg-gray-300">Posts index</a>
@@ -18,3 +18,4 @@
     </div>
   </div>
 </div>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "template/base.html" %}
+{% block content %}
+<nav class="flex items-center justify-between flex-wrap mb-4">
+  <div classes="w-full block flex-grow lg:flex lg:items-center lg:w-auto">
+    <a href="{{ (getx args :posts.links/new) }}" class="inline-block leading-relaxed px-4 py-2 border-solid border-2 border-gray-300 hover:bg-gray-300 mr-4">New post</a>
+  </div>
+</nav>
+<h1 class="text-xl font-bold">Posts by date</h1>
+{% if (empty? (getx args :posts)) %}
+    No posts<br/><a href="/">Back to index</a>
+{% endif %}
+{% for post in (getx args :posts) %}
+{- (def permalink (getx post :post.links/show)) -}
+<div class="flex flex-col border border-2 p-2 my-2">
+  <div><a href="{{ permalink }}">{{ (getx post :title) }}</a> posted by <a href="{{ (getx post :post.links/user-profile) }}">{{ (getx post :username) }}</a> <span class="text-gray-700" title="{{ (getx post :cdate) }}">
+      Created {{ (getx post :created_at_ago) }}
+      </span> <a href="{{ permalink }}">{{ (get post :comment-count 0) }} comments</a>
+  </div>
+</div>
+
+{% endfor %}
+{% if (def before-link (get args :posts.links/before)) %}
+<a href="{{ before-link }}"  class="inline-block leading-relaxed px-4 py-2 border-solid border-2 border-gray-300 hover:bg-gray-300 mr-4">Previous</a>
+{% endif %}
+{% if (def after-link (get args :posts.links/after)) %}
+  <a href="{{ after-link }}" class="inline-block leading-relaxed px-4 py-2 border-solid border-2 border-gray-300 hover:bg-gray-300 mr-4">Next</a>
+{% endif %}
+{% endblock %}

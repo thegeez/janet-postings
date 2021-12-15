@@ -1,7 +1,7 @@
-(import ./temple/temple :as temple)
 (import ./data)
 (import ./lib/encdecsignhash)
 (import ./crypto)
+(import ./selmer :as selmer)
 
 (defn assert-user [user]
   (assert (get user :username))
@@ -9,9 +9,8 @@
   (assert (get user :roles))
   user)
 
-
-(def auth-login-template (temple/make-template-fn "templates/login.html"))
-(def auth-signup-template (temple/make-template-fn "templates/signup.html"))
+(def auth-login-template (selmer/make-template-fn "template/login.html"))
+(def auth-signup-template (selmer/make-template-fn "template/signup.html"))
 
 
 (def allowed-userslug-chars-set
