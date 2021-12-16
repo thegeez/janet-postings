@@ -88,7 +88,9 @@
 
         res (data/put-auth auth)]
     (if (get res :error)
-      {:errors {:username "This username is not available"}}
+      (do
+        (eprintf "Err: Create account err res: %p" res)
+        {:errors {:username "This username is not available"}})
       {:user {:userslug userslug
               :username username
               :roles roles}})))
@@ -230,6 +232,7 @@
         userslug (username->userslug username)
 
         password username
+
         res (create-account userslug
                             username
                             password)

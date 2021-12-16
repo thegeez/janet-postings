@@ -186,9 +186,12 @@
                                                                0 # start from
                                                                2 # limit (do not split == within cookie-data-string)
                                                                )
-
-                cookie-string (crypto/unseal cookie-key cookie-data-string)]
-            (put cookies cookie-name cookie-string)))
+                unsealed-cookie (try (crypto/unseal cookie-key cookie-data-string)
+                                     ([err]
+                                      (printf "Could not unseal cookie: %p" cookie-name)
+                                      nil))]
+            (when unsealed-cookie # when unsealing failed this wasn't a cookie we set, ignore it
+              (put cookies cookie-name unsealed-cookie))))
         (put request :cookies cookies))
       # cookie header ""
       request)
@@ -373,10 +376,9 @@
                              (table? existing-headers)
                              existing-headers
                              :else
-                             (table (splice (kvs existing-headers))))))
+                              (table (splice (kvs existing-headers))))))
         response (after-csrf-handler request response)
         response (after-flash-handler request response)
-
         response (after-session-handler request response)
         response (after-cookie-handler request response)]
     response))
@@ -384,7 +386,7 @@
 (defn service [request]
   (def [request response] (before-handlers request))
   (if response
-    response       # shortcut if before-handlers made a response
+    response             # shortcut if before-handlers made a response
 
     (let [method (get request :method)
           uri (get request :uri)
@@ -465,8 +467,8 @@
                      (file-handler request "public")
 
                      :else
-                      {:status 404}
-                      )]
+                     {:status 404}
+                     )]
       (after-handlers request response))))
 
 
@@ -555,6 +557,8 @@
 (defn main [& args]
   (def runtime-api (get-runtime-api))
   (print "Running service for runtime-api: " runtime-api)
+  (print "Init random")
+  (math/seedrandom (os/cryptorand 8))
   (forever
    (let [request (http/get (string "http://" runtime-api "/2018-06-01/runtime/invocation/next"))
          request-headers (get request :headers)
@@ -572,16 +576,23 @@
                        {:headers {"Content-Type" "application/json"
                                   "Content-Length" (string (length response))}
                         :body response}))
-       ([err]
+       ([err fib]
         (print "Error in main service f" err)
-        (http/post (string "http://" runtime-api "/2018-06-01/runtime/invocation/" lambda-runtime-aws-request-id "/error")
-                   "{\"error\": \"main-service\"}"
-                   {:headers {"Content-Type" "application/json"}})))))
+        (let [b @""]
+          (with-dyns [:err b]
+            (debug/stacktrace fib err))
+          (print b))
+        (let [response "{\"error\": \"main-service\"}"]
+          (http/request "POST"
+                        (string "http://" runtime-api "/2018-06-01/runtime/invocation/" lambda-runtime-aws-request-id "/error")
+                        {:headers {"Content-Type" "application/json"
+                                   "Content-Length" (string (length response))}
+                         :body response}))))))
   )
 
 (comment
 
- (def ddb-client (get-ddb-client))
+ (def ddb-client (ddb/make-ddb-client))
 
 
  (ddb/invoke ddb-client
@@ -597,5 +608,8 @@
               :request {}})
  (create-table ddb-client)
 
+ (create-table ddb-client)
 
+ (import ./data)
+ (create-table (data/get-client))
 )

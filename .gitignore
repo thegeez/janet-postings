@@ -1,4 +1,5 @@
 aws_dynamo
+dynamo_local
 build
 crypto
 proxy.janet
