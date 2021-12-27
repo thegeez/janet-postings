@@ -1,7 +1,7 @@
 (import ./data)
-(import ./selmer :as selmer)
+(import jalmer)
 
-(def profile-show-template (selmer/make-template-fn "template/profile.html"))
+(def profile-show-template (jalmer/make-template-fn "template/profile.html"))
 
 (defn profile-show [request]
   (let [userslug (string/slice (get request :uri) (length "/profile/"))

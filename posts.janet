@@ -1,12 +1,12 @@
 (import ./pushid :as pushid)
 (import ./data)
-(import ./selmer :as selmer)
+(import jalmer)
 
-(def posts-index-template (selmer/make-template-fn "template/index.html"))
+(def posts-index-template (jalmer/make-template-fn "template/index.html"))
 
-(def posts-new-template (selmer/make-template-fn "template/new.html"))
-(def posts-show-template (selmer/make-template-fn "template/show.html"))
-(def posts-reply-template (selmer/make-template-fn "template/reply.html"))
+(def posts-new-template (jalmer/make-template-fn "template/new.html"))
+(def posts-show-template (jalmer/make-template-fn "template/show.html"))
+(def posts-reply-template (jalmer/make-template-fn "template/reply.html"))
 
 (defn posts-index [request]
   (let [## before/after is "20211023T200847Z_0MmilH44Uu3YgNPVII_f"

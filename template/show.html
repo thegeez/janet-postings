@@ -18,7 +18,7 @@
     </div>
     <div class="flex flex-col">
       <div class="block">Posted by <a href="{{ (getx args :post.links/user-profile) }}">{{ (getx args :username) }}</a></div>
-      <div class="block text-gray-700">Created <a href="{{ (getx args :post.links/show) }}" title="{{ (getx args :cdate) }}">{{ (getx args :created_at_ago) }}</a>, {{ (getx args :comment-count 0) }} comments</div>
+      <div class="block text-gray-700">Created <a href="{{ (getx args :post.links/show) }}" title="{{ (getx args :cdate) }}">{{ (getx args :created_at_ago) }}</a>, {{ (get args :comment-count 0) }} comments</div>
     </div>
 
     {% if (def reply-link (get args :post.links/reply)) %}

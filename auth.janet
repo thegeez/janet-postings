@@ -1,7 +1,7 @@
 (import ./data)
 (import ./lib/encdecsignhash)
 (import ./crypto)
-(import ./selmer :as selmer)
+(import jalmer)
 
 (defn assert-user [user]
   (assert (get user :username))
@@ -9,8 +9,8 @@
   (assert (get user :roles))
   user)
 
-(def auth-login-template (selmer/make-template-fn "template/login.html"))
-(def auth-signup-template (selmer/make-template-fn "template/signup.html"))
+(def auth-login-template (jalmer/make-template-fn "template/login.html"))
+(def auth-signup-template (jalmer/make-template-fn "template/signup.html"))
 
 
 (def allowed-userslug-chars-set

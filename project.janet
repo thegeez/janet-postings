@@ -1,8 +1,8 @@
 (declare-project
  :name "postings"
- :dependencies [#"https://github.com/joy-framework/http"
-                "https://github.com/joy-framework/halo2"
-                "https://github.com/janet-lang/json"])
+ :dependencies ["https://github.com/joy-framework/halo2"
+                "https://github.com/janet-lang/json"
+                {:repo "https://github.com/thegeez/jalmer" :tag "main"}])
 
 (declare-executable
  :name "bootstrap"
