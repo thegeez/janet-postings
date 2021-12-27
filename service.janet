@@ -557,8 +557,6 @@
 (defn main [& args]
   (def runtime-api (get-runtime-api))
   (print "Running service for runtime-api: " runtime-api)
-  (print "Init random")
-  (math/seedrandom (os/cryptorand 8))
   (forever
    (let [request (http/get (string "http://" runtime-api "/2018-06-01/runtime/invocation/next"))
          request-headers (get request :headers)

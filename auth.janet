@@ -224,8 +224,7 @@
 
 
 (defn guest-login-submit [request]
-  (let [user-id (string (splice (seq [i :range [0 12]]
-                                     (math/round (* 10 (math/random))))))
+  (let [user-id (string (math/round (* (os/time) (math/random))))
 
         username (string "Guest " user-id)
 
