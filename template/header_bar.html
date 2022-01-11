@@ -6,6 +6,9 @@
     <div class="lg:flex-grow">
       <a href="{{ (getx args :header.links/index) }}" class="mt-4 hover:text-white mr-4">Index</a>
 
+      <form method="GET" action="/search" class="inline">
+        <input name="q" id="searchfield" type="search" placeholder="Search..." class="p-2" value="{{ (get args :search/query) }}">
+      </form>
     </div>
 
     {# start of right side #}

@@ -1,5 +1,6 @@
 (import ./pushid :as pushid)
 (import ./data)
+(import ./data_search :as data-search)
 (import jalmer)
 
 (def posts-index-template (jalmer/make-template-fn "template/index.html"))
@@ -7,6 +8,8 @@
 (def posts-new-template (jalmer/make-template-fn "template/new.html"))
 (def posts-show-template (jalmer/make-template-fn "template/show.html"))
 (def posts-reply-template (jalmer/make-template-fn "template/reply.html"))
+
+(def posts-search-template (jalmer/make-template-fn "template/search.html"))
 
 (defn posts-index [request]
   (let [## before/after is "20211023T200847Z_0MmilH44Uu3YgNPVII_f"
@@ -195,4 +198,72 @@
           {:status 303
            :flash {:info "Created comment"}
            :headers {"Location" show-link}})))))
+
+(defn highlight-pieces [s]
+  # "__b__Third__/b__ post!" -> @["" :b "Third" :bend " post!"]
+  (mapcat
+   (fn [item]
+     (if (string? item)
+       (interpose :endb
+                  (string/split "__/b__" item))
+       item))
+   (interpose :b
+              (string/split "__b__" s))))
+
+(defn posts-search [request]
+  (let [q (get-in request [:query-params "q"])]
+    (if (or (not q)
+            (< (length q) 3))
+      {:status 303
+       :flash {:info "Search needs a proper query"}
+       :headers {"Location" "/"}}
+
+      (let [limit (let [limit-str (get-in request [:query-params "limit"] "10")
+                        limit (try (scan-number limit-str)
+                                   ([err]
+                                    10))]
+                    (max 2 (min limit 25)))
+
+            offset (let [offset-str (get-in request [:query-params "offset"] "0")
+                         offset (try (scan-number offset-str)
+                                     ([err]
+                                      0))]
+                     (max 0 offset))
+
+            results (data-search/search q
+                                        limit  # limit
+                                        offset # offset
+                                        )]
+        (if-let [error-msg (or (get results :error)
+                               (get results "error"))]
+          {:status 400
+           :body error-msg}
+
+          (let [items (seq [item :in (data/search-items->posts&comments (get results "items"))]
+                           (let [item (table (splice (kvs item)))]
+                             (if (= (get item :type) "POST")
+                               (-> item
+                                   (put :post.links/show (string "/posts/" (get item :slug)))
+                                   (put :post.links/user-profile (string "/profile/" (get item :userslug)))
+                                   (put :title_pieces (highlight-pieces (get item :title_highlight)))
+                                   (put :text_pieces (highlight-pieces (get item :text_highlight))))
+
+                               (-> item
+                                   (put :comment.links/show (string "/posts/" (get item :slug)))
+                                   (put :comment.links/user-profile (string "/profile/" (get item :userslug)))
+                                   (put :text_pieces (highlight-pieces (get item :text_highlight)))))))
+                result-count (get results "total-count")
+                previous-link (when (<= 0 (- offset limit))
+                                (string/format "/search?q=%s&limit=%d&offset=%d" q limit (- offset limit)))
+                next-link (when (< (+ offset limit) result-count)
+                            (string/format "/search?q=%s&limit=%d&offset=%d" q limit (+ offset limit)))]
+            {:status 200
+             :headers {"Content-Type" "text/html"}
+             :body (posts-search-template (merge request
+                                                 {:search/query q
+                                                  :search/items items
+                                                  :search/result-count result-count
+                                                  :search.links/previous previous-link
+                                                  :search.links/next next-link
+                                                 }))}))))))
 

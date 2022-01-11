@@ -1,0 +1,75 @@
+{% extends "template/base.html" %}
+{% block content %}
+<h1 class="text-xl font-bold">Search results</h1>
+Search query: {{ (getx args :search/query) }}<br> Result count: {{ (get args :search/result-count) }}
+
+{% for item in (getx args :search/items) %}
+{% if (= (get item :type) "POST") %} 
+{- (def post item)
+(def permalink (getx post :post.links/show)) -}
+<div class="flex flex-col border border-2 p-2 my-2">
+  <div><h1 class="text-xl mb-2"><a href="{{ permalink }}">
+      {% for title_piece in  (getx post :title_pieces) %}
+      {% if (= title_piece :b) %}
+      <b>
+        {% else %}
+        {% if (= title_piece :endb) %}
+          </b>
+        {% else %}
+        {{ title_piece }}
+        {% endif %}
+      {% endif %}
+      {% endfor %}
+    </a></h1>
+    <p class="text-base">
+     {% for text_piece in  (getx post :text_pieces) %}
+     {% if (= text_piece :b) %}
+      <b>
+        {% else %}
+        {% if (= text_piece :endb) %}
+          </b>
+        {% else %}
+        {{ text_piece }}
+        {% endif %}
+      {% endif %}
+      {% endfor %}
+    </p>
+    Posted by <a href="{{ (getx post :post.links/user-profile) }}">{{ (getx post :username) }}</a> <span class="text-gray-700" title="{{ (getx post :cdate) }}">
+      Created {{ (getx post :created_at_ago) }}
+      </span> <a href="{{ permalink }}">{{ (get post :comment-count 0) }} comments</a>
+  </div>
+</div>
+{% else %}
+{- (def comment item) -}
+<div class="flex flex-col border border-2 p-2 my-2">
+  <div>
+    <p class="text-base">
+     {% for text_piece in  (getx comment :text_pieces) %}
+     {% if (= text_piece :b) %}
+      <b>
+        {% else %}
+        {% if (= text_piece :endb) %}
+          </b>
+        {% else %}
+        {{ text_piece }}
+        {% endif %}
+      {% endif %}
+      {% endfor %}
+    </p>
+    Commented by <a href="{{ (getx comment :comment.links/user-profile) }}">{{ (getx comment :username) }}</a> <span class="text-gray-700" title="{{ (getx comment :cdate) }}">
+      Created {{ (getx comment :created_at_ago) }} on  
+      </span><a href="{{(get comment :comment.links/show) }}">{{ (getx comment :post_title) }}</a>
+  </div>
+</div>
+
+{% endif %}
+{% endfor %}
+<div>
+{% if (def previous-link (get args :search.links/previous)) %}
+<a href="{{ previous-link }}" class="inline-block leading-relaxed px-4 py-2 border-solid border-2 border-gray-300 hover:bg-gray-300 mr-4">Previous</a>
+{% endif %}
+{% if (def next-link (get args :search.links/next)) %}
+<a href="{{ next-link }}" class="inline-block leading-relaxed px-4 py-2 border-solid border-2 border-gray-300 hover:bg-gray-300 mr-4">Next</a>
+{% endif %}
+</div>
+{% endblock %}

@@ -2,9 +2,10 @@
 (import json)
 (import ./posts)
 (import ./profile)
-(import ./lib/aws_dynamo :as ddb)
+(import ./aws_api/aws_api :as aws-api)
 (import ./crypto)
 (import ./auth)
+(import ./maintenance)
 
 (defn file-handler [request root-folder]
   (try
@@ -27,66 +28,61 @@
     ([err]
      {:status 404})))
 
-# (def ddb-client-cache @[nil])
-# (defn get-ddb-client []
-#   (if-let [ddb-client (get ddb-client-cache 0)]
-#     ddb-client
-#     (let [ddb-client (ddb/make-ddb-client)]
-#       (put ddb-client-cache 0 ddb-client)
-#       ddb-client)))
-
 (defn create-table [ddb-client]
-  (ddb/invoke ddb-client
-              {:op :CreateTable
-               :request {"TableName" "janet_postings"
-                         "AttributeDefinitions"
-                         [{"AttributeName" "pk"
-                           "AttributeType" "S"}
-                          {"AttributeName" "sk"
-                           "AttributeType" "S"}
-                          # schema less but for completenes
-                          # {"AttributeName" "title"
-                          #  "AttributeType" "S"}
-                          # {"AttributeName" "content"
-                          #  "AttributeType" "S"}
-                          # {"AttributeName" "userslug"
-                          #  "AttributeType" "S"}
-                          # {"AttributeName" "username"
-                          #  "AttributeType" "S"}
-                          # {"AttributeName" "created_at"
-                          #  "AttributeType" "S"}
-                          # {"AttributeName" "updated_at"
-                          #  "AttributeType" "S"}
-                          # {"AttributeName" "comment-count"
-                          #  "AttributeType" "N"}
-                          {"AttributeName" "gsi1pk"
-                           "AttributeType" "S"}
-                          {"AttributeName" "gsi1sk"
-                           "AttributeType" "S"}
-                         
-                          ]
+  (aws-api/invoke ddb-client
+                  {:op :CreateTable
+                   :request {"TableName" "janet_postings"
+                             "AttributeDefinitions"
+                             [{"AttributeName" "pk"
+                               "AttributeType" "S"}
+                              {"AttributeName" "sk"
+                               "AttributeType" "S"}
+                              # schema less but for completenes
+                              # {"AttributeName" "title"
+                              #  "AttributeType" "S"}
+                              # {"AttributeName" "content"
+                              #  "AttributeType" "S"}
+                              # {"AttributeName" "userslug"
+                              #  "AttributeType" "S"}
+                              # {"AttributeName" "username"
+                              #  "AttributeType" "S"}
+                              # {"AttributeName" "created_at"
+                              #  "AttributeType" "S"}
+                              # {"AttributeName" "updated_at"
+                              #  "AttributeType" "S"}
+                              # {"AttributeName" "comment-count"
+                              #  "AttributeType" "N"}
+                              {"AttributeName" "gsi1pk"
+                               "AttributeType" "S"}
+                              {"AttributeName" "gsi1sk"
+                               "AttributeType" "S"}
 
-                         "KeySchema"
-                         [{"AttributeName" "pk"
-                           "KeyType" "HASH"}
-                          {"AttributeName" "sk"
-                           "KeyType" "RANGE"}
-                          ]
+                              ]
 
-                         "GlobalSecondaryIndexes"
-                         [{"IndexName" "gsi1"
-                           "KeySchema" [{"AttributeName" "gsi1pk"
-                                         "KeyType" "HASH"}
-                                        {"AttributeName" "gsi1sk"
-                                         "KeyType" "RANGE"}]
-                           "Projection" {"ProjectionType" "ALL"}
-                           # TODO don't need content & version in projection
-                           "ProvisionedThroughput" {"ReadCapacityUnits" 1
-                                                    "WriteCapacityUnits" 1}
-                           }]
-                         "ProvisionedThroughput" {"ReadCapacityUnits" 1
-                                                  "WriteCapacityUnits" 1}
-                         }}))
+                             "KeySchema"
+                             [{"AttributeName" "pk"
+                               "KeyType" "HASH"}
+                              {"AttributeName" "sk"
+                               "KeyType" "RANGE"}
+                              ]
+
+                             "GlobalSecondaryIndexes"
+                             [{"IndexName" "gsi1"
+                               "KeySchema" [{"AttributeName" "gsi1pk"
+                                             "KeyType" "HASH"}
+                                            {"AttributeName" "gsi1sk"
+                                             "KeyType" "RANGE"}]
+                               "Projection" {"ProjectionType" "ALL"}
+                               # TODO don't need content & version in projection
+                               "ProvisionedThroughput" {"ReadCapacityUnits" 1
+                                                        "WriteCapacityUnits" 1}
+                               }]
+                             "ProvisionedThroughput" {"ReadCapacityUnits" 1
+                                                      "WriteCapacityUnits" 1}
+
+                             "StreamSpecification" {"StreamEnabled" true
+                                                    "StreamViewType" "NEW_IMAGE"}
+                             }}))
 
 (def percent-encoding-mapping
   # https://developer.mozilla.org/en-US/docs/Glossary/percent-encoding
@@ -466,6 +462,10 @@
                           (string/has-prefix? "/public" uri))
                      (file-handler request "public")
 
+                     (and (= method :get)
+                          (= uri "/search"))
+                     (posts/posts-search request)
+
                      :else
                      {:status 404}
                      )]
@@ -546,9 +546,21 @@
       (json/encode res-l))))
 
 (defn service-handler [request]
-  (let [request (lambda-json->request request)
-        response (service request)]
-    (response->lambda-json response)))
+  (if (string/has-prefix? "\"CONSOLE_EVENT" request)
+    (if (string/has-prefix? "\"CONSOLE_EVENT_TEMP" request)
+      (try (-> (slurp "temp.janet")
+               (eval-string)
+               (->> (string/format "%p"))
+               (json/encode))
+           ([err]
+            (eprintf "temp__err %p" err)
+            {:done true}))
+      (maintenance/main request)) # fired event from lambda console
+
+    # events from API gateway are JSON
+    (let [request (lambda-json->request request)
+          response (service request)]
+      (response->lambda-json response))))
 
 (defn get-runtime-api []
   (or (os/getenv "AWS_LAMBDA_RUNTIME_API")
@@ -590,24 +602,25 @@
 
 (comment
 
- (def ddb-client (ddb/make-ddb-client))
+ (def ddb-client (aws-api/make-ddb-client))
 
 
- (ddb/invoke ddb-client
-             {:op :DescribeTable
-              :request {"TableName" "janet_postings"}})
+ (aws-api/invoke ddb-client
+                 {:op :DescribeTable
+                  :request {"TableName" "janet_postings"}})
 
- (ddb/invoke ddb-client
-             {:op :DeleteTable
-              :request {"TableName" "janet_postings"}})
+ (aws-api/invoke ddb-client
+                 {:op :DeleteTable
+                  :request {"TableName" "janet_postings"}})
 
- (ddb/invoke ddb-client
-             {:op :ListTables
-              :request {}})
+ (aws-api/invoke ddb-client
+                 {:op :ListTables
+                  :request {}})
  (create-table ddb-client)
 
  (create-table ddb-client)
 
  (import ./data)
  (create-table (data/get-client))
-)
+
+ )

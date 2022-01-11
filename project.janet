@@ -9,3 +9,7 @@
  :entry "service.janet"
  )
 
+(declare-executable
+ :name "bootstrap_search"
+ :entry "search/service.janet"
+ )

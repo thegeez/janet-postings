@@ -1,4 +1,4 @@
-(import ./lib/aws_dynamo :as ddb)
+(import ./aws_api/aws_api :as aws-api)
 (import ./moment)
 
 (def TABLE_NAME "janet_postings")
@@ -10,30 +10,12 @@
 
 (def sk-auth "#USER_ACCOUNT")
 
-(defn make-ddb-client []
-  (let [region (os/getenv "AWS_REGION")
-
-        endpoint (if (os/getenv "JANET_DEV_ENV")
-                   {:protocol "http"
-                    :hostname "localhost" # temp dev
-                    :region "local-region"
-                    :port 3333}
-                   {:protocol "https"
-                    :hostname (string "dynamodb." region ".amazonaws.com")
-                    :port 443
-                    :region region
-                    :service "dynamodb"})]
-    @{                          #:api :dynamodb
-      :endpoint endpoint
-      :service "dynamodb"
-      :target-prefix "DynamoDB_20120810"}))
-
 (def client-box @[nil])
 
 (defn get-client []
   (if-let [client (get client-box 0)]
     client
-    (let [client (make-ddb-client)]
+    (let [client (aws-api/make-ddb-client)]
       (put client-box 0 client)
       client)))
 
@@ -54,24 +36,24 @@
           pk slug
           sk sk-post-first-ordered
 
-          cdate (ddb/amz-date-format created-at)
+          cdate (aws-api/amz-date-format created-at)
           gsi1pk gsi1pk-post
           gsi1sk (string cdate "_" slug)]
-      (ddb/invoke client
-                  {:op :PutItem
-                     :request {:TableName TABLE_NAME
-                               :ConditionExpression "attribute_not_exists(#pk)" # in case pushid collision
-                               :ExpressionAttributeNames {"#pk" "pk"}
-                               :Item {:pk {:S pk}
-                                      :sk {:S sk}
-                                      :userslug {:S userslug}
-                                      :username {:S username}
-                                      :cdate {:S cdate}
-                                      :title {:S title}
-                                      :text {:S text}
-                                      :comment-count {:N "0"}
-                                      :gsi1pk {:S gsi1pk}
-                                      :gsi1sk {:S gsi1sk}}}}))))
+      (aws-api/invoke client
+                      {:op :PutItem
+                       :request {:TableName TABLE_NAME
+                                 :ConditionExpression "attribute_not_exists(#pk)" # in case pushid collision
+                                 :ExpressionAttributeNames {"#pk" "pk"}
+                                 :Item {:pk {:S pk}
+                                        :sk {:S sk}
+                                        :userslug {:S userslug}
+                                        :username {:S username}
+                                        :cdate {:S cdate}
+                                        :title {:S title}
+                                        :text {:S text}
+                                        :comment-count {:N "0"}
+                                        :gsi1pk {:S gsi1pk}
+                                        :gsi1sk {:S gsi1sk}}}}))))
 
 (defn put-comment [comment]
   (let [{:post-slug post-slug
@@ -90,32 +72,32 @@
           pk post-slug
           sk (string comment-order-id sk-comment-postfix)
 
-          cdate (ddb/amz-date-format created-at)]
+          cdate (aws-api/amz-date-format created-at)]
       (try
         # TODO combine into BatchRequest
-        (ddb/invoke client
-                    {:op :UpdateItem
-                     :request {:TableName TABLE_NAME
-                               :Key {:pk {:S pk}
-                                     :sk {:S sk-post-first-ordered}}
-                               :UpdateExpression "ADD #comment_count :inc"
-                               :ExpressionAttributeNames {"#comment_count" "comment-count"}
-                               :ExpressionAttributeValues {":inc" {:N "1"}}
-                               }})
+        (aws-api/invoke client
+                        {:op :UpdateItem
+                         :request {:TableName TABLE_NAME
+                                   :Key {:pk {:S pk}
+                                         :sk {:S sk-post-first-ordered}}
+                                   :UpdateExpression "ADD #comment_count :inc"
+                                   :ExpressionAttributeNames {"#comment_count" "comment-count"}
+                                   :ExpressionAttributeValues {":inc" {:N "1"}}
+                                   }})
         ([err]
          nil       # keeping comment count correct is best effort only
          ))
-      (ddb/invoke client
-                  {:op :PutItem
-                   :request {:TableName TABLE_NAME
-                             :ConditionExpression "attribute_not_exists(#pk)" # in case pushid collision
-                             :ExpressionAttributeNames {"#pk" "pk"}
-                             :Item {:pk {:S pk}
-                                    :sk {:S sk}
-                                    :userslug {:S userslug}
-                                    :username {:S username}
-                                    :cdate {:S cdate}
-                                    :text {:S text}}}}))))
+      (aws-api/invoke client
+                      {:op :PutItem
+                       :request {:TableName TABLE_NAME
+                                 :ConditionExpression "attribute_not_exists(#pk)" # in case pushid collision
+                                 :ExpressionAttributeNames {"#pk" "pk"}
+                                 :Item {:pk {:S pk}
+                                        :sk {:S sk}
+                                        :userslug {:S userslug}
+                                        :username {:S username}
+                                        :cdate {:S cdate}
+                                        :text {:S text}}}}))))
 
 (defn ddb-items->posts&comments [items]
   (let [now (os/time)]
@@ -148,6 +130,28 @@
                      :created_at_ago (moment/time-ago-str (moment/amz-time-to-seconds cdate) now)}]
            item))))
 
+(defn search-items->posts&comments [items]
+  (let [now (os/time)]
+    (seq [item :in items]
+         (let [cdate (get item "cdate")
+
+               item-slug (get item "pk")
+
+               sk (get item "sk")
+
+               item {:type (get item "type")
+                     :slug item-slug
+                     :comment-count (get item "comment_count") # posts only
+                     :userslug (get item "userslug")
+                     :username (get item "username")
+                     :title_highlight (get item "title_highlight") # posts only
+                     :text_highlight (get item "text_highlight")
+                     :post_title (get item "post_title") # comments only
+                     :cdate cdate
+                     :created_at_ago (when cdate
+                                       (moment/time-ago-str (moment/amz-time-to-seconds cdate) now))}]
+           item))))
+
 (defn get-posts [before after limit]
   (let [client (get-client)
 
@@ -156,32 +160,32 @@
                 (or after
                     "9999999999"))
         posts-res (if before
-                    (-> (ddb/invoke client
+                    (-> (aws-api/invoke client
+                                        {:op :Query
+                                         :request {:TableName TABLE_NAME
+                                                   :IndexName "gsi1"
+                                                   :KeyConditionExpression    "#gsi1pk = :post_gsi1pk and #gsi1sk > :start_from"
+                                                   :ExpressionAttributeNames {"#gsi1pk" "gsi1pk"
+                                                                              "#gsi1sk" "gsi1sk"}
+                                                   :ExpressionAttributeValues {":post_gsi1pk" {:S gsi1pk-post}
+                                                                               ":start_from" {:S before}
+                                                                               }
+                                                   :ScanIndexForward true
+                                                   :Limit limit}})
+                        (update "Items" reverse))
+                    # after
+                    (aws-api/invoke client
                                     {:op :Query
                                      :request {:TableName TABLE_NAME
                                                :IndexName "gsi1"
-                                               :KeyConditionExpression    "#gsi1pk = :post_gsi1pk and #gsi1sk > :start_from"
+                                               :KeyConditionExpression    "#gsi1pk = :post_gsi1pk and #gsi1sk < :start_from"
                                                :ExpressionAttributeNames {"#gsi1pk" "gsi1pk"
                                                                           "#gsi1sk" "gsi1sk"}
                                                :ExpressionAttributeValues {":post_gsi1pk" {:S gsi1pk-post}
-                                                                           ":start_from" {:S before}
+                                                                           ":start_from" {:S after}
                                                                            }
-                                               :ScanIndexForward true
-                                               :Limit limit}})
-                        (update "Items" reverse))
-                    # after
-                    (ddb/invoke client
-                                {:op :Query
-                                   :request {:TableName TABLE_NAME
-                                             :IndexName "gsi1"
-                                             :KeyConditionExpression    "#gsi1pk = :post_gsi1pk and #gsi1sk < :start_from"
-                                             :ExpressionAttributeNames {"#gsi1pk" "gsi1pk"
-                                                                        "#gsi1sk" "gsi1sk"}
-                                             :ExpressionAttributeValues {":post_gsi1pk" {:S gsi1pk-post}
-                                                                         ":start_from" {:S after}
-                                                                        }
-                                             :ScanIndexForward false
-                                             :Limit limit}}))]
+                                               :ScanIndexForward false
+                                               :Limit limit}}))]
     (if-let [items (get posts-res "Items")]
       (ddb-items->posts&comments items)
       [])))
@@ -190,15 +194,15 @@
   (let [client (get-client)
         pk post-slug
         sk sk-post-first-ordered
-        post-res (ddb/invoke client
-                             {:op :Query
-                              :request {:TableName TABLE_NAME
-                                        :KeyConditionExpression    "#pk = :pk and #sk >= :sk"
-                                        :ExpressionAttributeNames {"#pk" "pk"
-                                                                   "#sk" "sk"}
-                                        :ExpressionAttributeValues {":pk" {:S pk}
-                                                                    ":sk" {:S sk}
-                                                                    }}})]
+        post-res (aws-api/invoke client
+                                 {:op :Query
+                                  :request {:TableName TABLE_NAME
+                                            :KeyConditionExpression    "#pk = :pk and #sk >= :sk"
+                                            :ExpressionAttributeNames {"#pk" "pk"
+                                                                       "#sk" "sk"}
+                                            :ExpressionAttributeValues {":pk" {:S pk}
+                                                                        ":sk" {:S sk}
+                                                                        }}})]
     (if (= (get post-res "Count") 0)
       nil
       (let [post (-> (take 1 (get post-res "Items"))
@@ -213,11 +217,11 @@
 (defn get-auth [userslug]
   (let [client (get-client)
         # @{} notfound, @{"Item" {"attr" {"S" "..." }}} foudn, @{:error true ...} error
-        res (ddb/invoke client
-                        {:op :GetItem
-                         :request {:TableName TABLE_NAME
-                                   :Key {:pk {:S userslug}
-                                         :sk {:S sk-auth}}}})]
+        res (aws-api/invoke client
+                            {:op :GetItem
+                             :request {:TableName TABLE_NAME
+                                       :Key {:pk {:S userslug}
+                                             :sk {:S sk-auth}}}})]
     (if (or (empty? res)
             (get res :error))
       {:error true}
@@ -245,7 +249,7 @@
           pk userslug
           sk sk-auth
 
-          created-at-date (ddb/amz-date-format (os/date))
+          created-at-date (aws-api/amz-date-format (os/date))
 
           roles-ss (seq [role :keys roles]
                         (string role))
@@ -257,21 +261,21 @@
                     :created-at-date {:S created-at-date}
                     :roles {:SS roles-ss}
                     }]
-      (ddb/invoke client
-                  {:op :PutItem
-                   :request {:TableName TABLE_NAME
-                             :ConditionExpression "attribute_not_exists(#pk)" # in case pushid collision
-                             :ExpressionAttributeNames {"#pk" "pk"}
-                             :Item ddb-item}}))))
+      (aws-api/invoke client
+                      {:op :PutItem
+                       :request {:TableName TABLE_NAME
+                                 :ConditionExpression "attribute_not_exists(#pk)" # in case pushid collision
+                                 :ExpressionAttributeNames {"#pk" "pk"}
+                                 :Item ddb-item}}))))
 
 (defn get-profile [userslug]
   (let [client (get-client)
         # @{} notfound, @{"Item" {"attr" {"S" "..." }}} foudn, @{:error true ...} error
-        res (ddb/invoke client
-                        {:op :GetItem
-                         :request {:TableName TABLE_NAME
-                                   :Key {:pk {:S userslug}
-                                         :sk {:S sk-auth}}}})]
+        res (aws-api/invoke client
+                            {:op :GetItem
+                             :request {:TableName TABLE_NAME
+                                       :Key {:pk {:S userslug}
+                                             :sk {:S sk-auth}}}})]
     (if (or (empty? res)
             (get res :error))
       {:error true}
@@ -281,29 +285,29 @@
                      :username (get-in item ["username" "S"])
                      :created-at-date created-at-date
                      :created-at-ago (moment/time-ago-str (moment/amz-time-to-seconds created-at-date) (os/time))
-                    }]
+                     }]
         profile))))
 
 
 (comment
  (let [client (get-client)
        pk "0Mn3F83RJ5qDryTodl9Z"]
-   (ddb/invoke client
-               {:op :UpdateItem
-                :request {:TableName TABLE_NAME
-                          :Key {:pk {:S pk}
-                                :sk {:S sk-post-first-ordered}}
-                          :UpdateExpression "ADD #comment_count :inc"
-                          :ExpressionAttributeNames {"#comment_count" "comment-count"}
-                          :ExpressionAttributeValues {":inc" {:N "1"}}
-                          }}))
+   (aws-api/invoke client
+                   {:op :UpdateItem
+                    :request {:TableName TABLE_NAME
+                              :Key {:pk {:S pk}
+                                    :sk {:S sk-post-first-ordered}}
+                              :UpdateExpression "ADD #comment_count :inc"
+                              :ExpressionAttributeNames {"#comment_count" "comment-count"}
+                              :ExpressionAttributeValues {":inc" {:N "1"}}
+                              }}))
 
  (let [client (get-client)
        pk "0Mn3F83RJ5qDryTodl9Z"]
-   (ddb/invoke client
-               {:op :GetItem
-                :request {:TableName TABLE_NAME
-                          :Key {:pk {:S pk}
-                                :sk {:S sk-post-first-ordered}}
-                          }}))
+   (aws-api/invoke client
+                   {:op :GetItem
+                    :request {:TableName TABLE_NAME
+                              :Key {:pk {:S pk}
+                                    :sk {:S sk-post-first-ordered}}
+                              }}))
  )
